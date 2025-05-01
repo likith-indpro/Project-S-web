@@ -6,16 +6,14 @@ import {
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 import "./App.css";
-import MainLayout from "./layouts/MainLayout";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import MainLayout from "./layouts/MainLayout/MainLayout";
+import { AuthProvider, useAuth } from "./contexts/AuthContext/AuthContext";
 
 // Import pages
-import HomePage from "./pages/Home";
-import AboutPage from "./pages/About";
-import LoginPage from "./pages/Auth/Login";
-import RegisterPage from "./pages/Auth/Register";
-import ClientDashboard from "./pages/Dashboard/Client";
-import LawyerDashboard from "./pages/Dashboard/Lawyer";
+import LoginPage from "./pages/Auth/Login/LoginPage";
+import RegisterPage from "./pages/Auth/Register/RegisterPage";
+import ClientDashboard from "./pages/Dashboard/Client/ClientDashboard";
+import LawyerDashboard from "./pages/Dashboard/LawyerDashboard";
 
 // 404 Page component
 const NotFoundPage = () => (
@@ -119,22 +117,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route
-        path="/"
-        element={
-          <MainLayout>
-            <HomePage />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/about"
-        element={
-          <MainLayout>
-            <AboutPage />
-          </MainLayout>
-        }
-      />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
@@ -142,7 +125,7 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/dashboard/client"
         element={
-          <ProtectedRoute requiredRole="default">
+          <ProtectedRoute>
             <MainLayout>
               <ClientDashboard />
             </MainLayout>
@@ -170,7 +153,7 @@ const AppRoutes: React.FC = () => {
           </MainLayout>
         }
       />
-      <Route path="*" element={<Navigate to="/404" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 };

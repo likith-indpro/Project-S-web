@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext/AuthContext";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -67,12 +67,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </Link>
 
           <div className="space-x-6">
-            <Link to="/" className="hover:text-blue-600 transition-colors">
-              Home
-            </Link>
-            <Link to="/about" className="hover:text-blue-600 transition-colors">
-              About
-            </Link>
             {isAuthenticated && (
               <Link
                 to={dashboardLink}
@@ -131,16 +125,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <div>
               <h3 className="text-lg font-semibold mb-3">Quick Links</h3>
               <ul className="space-y-2 text-gray-600">
-                <li>
-                  <Link to="/" className="hover:text-blue-600">
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/about" className="hover:text-blue-600">
-                    About
-                  </Link>
-                </li>
                 {isAuthenticated && (
                   <li>
                     <Link to={dashboardLink} className="hover:text-blue-600">
