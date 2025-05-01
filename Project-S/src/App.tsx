@@ -4,13 +4,9 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-// import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
-
-// Import layout
 import MainLayout from "./layouts/MainLayout";
-
-// Import auth context
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // Import pages
@@ -49,9 +45,53 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole,
 }) => {
   const { user, isAuthenticated, loading } = useAuth();
+  const [roleName, setRoleName] = useState<string | null>(null);
+  const [checkingRole, setCheckingRole] = useState<boolean>(true);
 
-  // Still loading
-  if (loading) {
+  // Fetch role name when component mounts or user changes
+  useEffect(() => {
+    const fetchRoleName = async () => {
+      if (!user?.role) {
+        setRoleName(null);
+        setCheckingRole(false);
+        return;
+      }
+
+      try {
+        // Use directusApi directly to get role information
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/roles/${user.role}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setRoleName(data.data.name);
+        } else {
+          setRoleName("default");
+        }
+      } catch (error) {
+        console.error("Failed to fetch role name:", error);
+        setRoleName("default");
+      } finally {
+        setCheckingRole(false);
+      }
+    };
+
+    if (user?.role) {
+      fetchRoleName();
+    } else {
+      setRoleName(null);
+      setCheckingRole(false);
+    }
+  }, [user]);
+
+  // Still loading authentication or role
+  if (loading || checkingRole) {
     return <div>Loading...</div>;
   }
 
@@ -61,9 +101,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // If role is required and user doesn't have it
-  if (requiredRole && user?.role !== requiredRole) {
+  if (requiredRole && roleName !== requiredRole) {
     // Redirect to appropriate dashboard
-    if (user?.role === "lawyer") {
+    if (roleName === "lawyer") {
       return <Navigate to="/dashboard/lawyer" replace />;
     } else {
       return <Navigate to="/dashboard/client" replace />;
@@ -102,7 +142,7 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/dashboard/client"
         element={
-          <ProtectedRoute requiredRole="client">
+          <ProtectedRoute requiredRole="default">
             <MainLayout>
               <ClientDashboard />
             </MainLayout>

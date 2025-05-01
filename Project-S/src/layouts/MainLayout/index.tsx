@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -9,15 +9,54 @@ interface MainLayoutProps {
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const [roleName, setRoleName] = useState<string | null>(null);
+
+  // Fetch role name when component mounts or user changes
+  useEffect(() => {
+    const fetchRoleName = async () => {
+      if (!user?.role) {
+        setRoleName(null);
+        return;
+      }
+
+      try {
+        // Use fetch directly to get role information
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/roles/${user.role}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setRoleName(data.data.name);
+        } else {
+          setRoleName("default");
+        }
+      } catch (error) {
+        console.error("Failed to fetch role name:", error);
+        setRoleName("default");
+      }
+    };
+
+    if (user?.role) {
+      fetchRoleName();
+    } else {
+      setRoleName(null);
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-  // Determine which dashboard to link to based on user role
+  // Determine which dashboard to link to based on user role name
   const dashboardLink =
-    user?.role === "lawyer" ? "/dashboard/lawyer" : "/dashboard/client";
+    roleName === "lawyer" ? "/dashboard/lawyer" : "/dashboard/client";
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">

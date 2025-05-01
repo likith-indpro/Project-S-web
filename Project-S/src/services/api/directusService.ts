@@ -106,4 +106,23 @@ export const usersService = createCollectionService<{
   role: string;
 }>("users");
 
+// Roles service for handling role information
+export const rolesService = {
+  ...createCollectionService<{
+    id: string;
+    name: string;
+    // Add other role properties as needed
+  }>("roles"),
+
+  getRoleName: async (roleId: string): Promise<string> => {
+    try {
+      const response = await directusApi.get(`/roles/${roleId}`);
+      return response.data.data.name || "default";
+    } catch (error) {
+      console.error("Error fetching role name:", error);
+      return "default";
+    }
+  },
+};
+
 // Add more specific collection services as needed

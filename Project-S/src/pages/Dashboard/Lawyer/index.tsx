@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
+import { useAuth } from "../../../contexts/AuthContext";
 
 // Mock data for lawyer dashboard
 const mockData = {
@@ -78,21 +79,64 @@ const mockData = {
 };
 
 const LawyerDashboard: React.FC = () => {
-  const [user, setUser] = useState<any>(null);
+  // Use the auth context instead of managing separate state
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real app, verify the user is authenticated and has the correct role
-    const userJson = localStorage.getItem("user_info");
-    if (userJson) {
-      setUser(JSON.parse(userJson));
-    }
-    setLoading(false);
-  }, []);
+    const fetchUserRole = async () => {
+      try {
+        // Get user info from context or localStorage
+        const userJson = localStorage.getItem("user_info");
 
-  // Redirect if not authenticated or not a lawyer
-  if (!loading && (!user || user.role !== "lawyer")) {
-    return <Navigate to="/login" replace />;
+        if (userJson) {
+          const userData = JSON.parse(userJson);
+
+          // Check for roleName property added by our enhanced AuthContext
+          if (userData.roleName) {
+            setUserRole(userData.roleName);
+          } else if (userData.role) {
+            // Fallback to fetching role directly if needed
+            try {
+              const response = await fetch(
+                `${import.meta.env.VITE_API_URL}/roles/${userData.role}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+                  },
+                }
+              );
+
+              if (response.ok) {
+                const data = await response.json();
+                setUserRole(data.data.name);
+              }
+            } catch (error) {
+              console.error("Failed to fetch role:", error);
+            }
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserRole();
+  }, [user]);
+
+  // Show loading while authentication is in progress
+  if (authLoading || loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Redirect if user is NOT a lawyer
+  if (userRole !== "lawyer") {
+    return <Navigate to="/dashboard/client" replace />;
   }
 
   const formatDate = (dateString: string) => {

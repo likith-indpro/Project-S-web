@@ -57,10 +57,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Get user info if token exists
           const userInfo = await authService.getCurrentUser();
           setUser(userInfo.data);
+
+          // Also retrieve user info from localStorage if it exists
+          const storedUserInfo = localStorage.getItem("user_info");
+          if (storedUserInfo) {
+            const parsedUserInfo = JSON.parse(storedUserInfo);
+            // Merge stored info with current user data
+            setUser((prev) => (prev ? { ...prev, ...parsedUserInfo } : null));
+          }
         }
       } catch (err) {
         // Token might be invalid, clear it
         localStorage.removeItem("auth_token");
+        localStorage.removeItem("user_info");
         setUser(null);
       } finally {
         setLoading(false);
@@ -78,11 +87,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Get current user after successful login
       const userInfo = await authService.getCurrentUser();
-      setUser(userInfo.data);
 
       // Check stored user type (from registration) to handle first login
       const storedUserType = localStorage.getItem("user_type");
       const storedUserDetails = localStorage.getItem("user_details");
+
+      let userRole = userInfo.data.role;
+      let userData = { ...userInfo.data };
 
       if (storedUserType && storedUserDetails) {
         // If this is a first login after registration, update user details
@@ -94,17 +105,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             role: storedUserType,
           });
 
-          // Update local user state with new details
-          setUser((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  first_name: details.first_name,
-                  last_name: details.last_name,
-                  role: storedUserType,
-                }
-              : null
-          );
+          // Update user data with new details
+          userData = {
+            ...userData,
+            first_name: details.first_name,
+            last_name: details.last_name,
+            role: storedUserType,
+          };
+          userRole = storedUserType;
 
           // Clear the stored registration data
           localStorage.removeItem("user_type");
@@ -114,12 +122,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
 
-      // Redirect based on user role
-      if (userInfo.data?.role === "lawyer") {
-        navigate("/dashboard/lawyer");
-      } else {
-        navigate("/dashboard/client");
+      // Set user in state
+      setUser(userData);
+
+      // Store user info in localStorage for persistence
+      localStorage.setItem("user_info", JSON.stringify(userData));
+
+      // Fetch role information if needed
+      try {
+        if (userData.role) {
+          const roleResponse = await fetch(
+            `${import.meta.env.VITE_API_URL}/roles/${userData.role}`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+              },
+            }
+          );
+
+          if (roleResponse.ok) {
+            const roleData = await roleResponse.json();
+
+            // Store role name in user info
+            const updatedUserData = {
+              ...userData,
+              roleName: roleData.data.name,
+            };
+
+            setUser(updatedUserData);
+            localStorage.setItem("user_info", JSON.stringify(updatedUserData));
+
+            // Redirect based on role name
+            if (roleData.data.name === "lawyer") {
+              navigate("/dashboard/lawyer");
+              return;
+            }
+          }
+        }
+      } catch (roleErr) {
+        console.error("Failed to fetch role information:", roleErr);
       }
+
+      // Default redirect to client dashboard
+      navigate("/dashboard/client");
+    } catch (err) {
+      console.error("Login error:", err);
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -141,7 +189,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Update user function
   const updateUser = (userData: Partial<User>) => {
-    setUser((prev) => (prev ? { ...prev, ...userData } : null));
+    setUser((prev) => {
+      const updatedUser = prev ? { ...prev, ...userData } : null;
+      if (updatedUser) {
+        localStorage.setItem("user_info", JSON.stringify(updatedUser));
+      }
+      return updatedUser;
+    });
   };
 
   // Provide auth context
